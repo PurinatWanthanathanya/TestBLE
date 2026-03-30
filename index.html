@@ -66,22 +66,28 @@
         await device.watchAdvertisements();
         
         device.addEventListener('advertisementreceived', (event) => {
-            // เก็บค่า RSSI ล่าสุดลงใน Array
+            // 1. ตรวจสอบก่อนว่ามีค่า RSSI ส่งมาจริงไหม
+            if (event.rssi === undefined || event.rssi === null) return;
+
+            // 2. เก็บค่า RSSI ลงใน Array
             rssiHistory.push(event.rssi);
             
-            // เก็บแค่ 10 ค่าล่าสุดพอ (ถ้าเกินให้เอาค่าเก่าสุดออก)
+            // 3. เก็บแค่ 10 ค่าล่าสุด
             if (rssiHistory.length > 10) rssiHistory.shift();
             
-            // หาค่าเฉลี่ย RSSI เพื่อลดอาการ "เลขกระโดด"
-            const avgRssi = rssiHistory.reduce((a, b) => a + b) / rssiHistory.length;
+            // 4. หาค่าเฉลี่ย (เพิ่มเลข 0 เข้าไปใน reduce เพื่อป้องกัน Error)
+            const sum = rssiHistory.reduce((a, b) => a + b, 0); 
+            const avgRssi = sum / rssiHistory.length;
             
-            // คำนวณระยะทางจากค่าเฉลี่ย
+            // 5. คำนวณระยะทาง
             const distance = calculateDistance(avgRssi);
             
-            // แสดงผลบนหน้าจอ
-            rssiVal.innerText = avgRssi.toFixed(1); // โชว์ RSSI เฉลี่ย
-            distVal.innerText = distance + " m";   // โชว์ระยะทางที่นิ่งขึ้น
-            status.innerText = "กำลังคำนวณพิกัดแบบ Smooth...";
+            // 6. แสดงผล (ใช้ console.log ช่วยเช็คในมือถือด้วย)
+            console.log("ได้สัญญาณแล้ว!", avgRssi);
+            
+            rssiVal.innerText = avgRssi.toFixed(1);
+            distVal.innerText = distance + " m";
+            status.innerText = "รับข้อมูล Real-time สำเร็จ! (ค่าเฉลี่ย 10 ครั้ง)";
         });
 
     } catch (error) {
