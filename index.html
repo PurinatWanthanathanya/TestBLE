@@ -53,7 +53,10 @@
             
             // 1. เลือกอุปกรณ์ (กรองเอาทุกอย่างที่ตะโกนสัญญาณออกมา)
             const device = await navigator.bluetooth.requestDevice({
-                acceptAllDevices: true
+                filters: [
+                    { services: [0x180d] } // บอก Chrome ว่า "ช่วยหาอุปกรณ์ที่มี Service 180d ให้หน่อย"
+                ],
+                optionalServices: ['heart_rate'] // ยืนยันว่าเราจะขอคุยกับ Service นี้ (180d คือรหัสของ Heart Rate)
             });
 
             status.innerText = "กำลังเริ่มดักฟังเรดาร์ (Watch Advertisements)...";
