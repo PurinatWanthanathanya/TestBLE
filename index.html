@@ -48,41 +48,36 @@
     }
 
     scanBtn.addEventListener('click', async () => {
-        try {
-            status.innerText = "กำลังขอสิทธิ์เข้าถึง Bluetooth...";
+    try {
+        status.innerText = "กำลังมองหาทุกอย่างรอบตัว...";
+        
+        const device = await navigator.bluetooth.requestDevice({
+            // 1. รับทุกอย่างที่ขยับได้ (เพื่อให้รายการโผล่มาแน่นอน)
+            acceptAllDevices: true,
+            // 2. แต่ต้องบอกว่าเรา "อาจจะ" ขอคุยกับ Service 180d นะ (ห้ามลืม!)
+            optionalServices: [0x180d, 'heart_rate'] 
+        });
+
+        status.innerText = "เจอแล้ว! กำลังเตรียมดักฟัง...";
+        devName.innerText = device.name || "Unknown Device (" + device.id.slice(-5) + ")";
+
+        // 3. เริ่มโหมดเรดาร์
+        await device.watchAdvertisements();
+        
+        device.addEventListener('advertisementreceived', (event) => {
+            const rssi = event.rssi;
+            const distance = calculateDistance(rssi);
             
-            // 1. เลือกอุปกรณ์ (กรองเอาทุกอย่างที่ตะโกนสัญญาณออกมา)
-            const device = await navigator.bluetooth.requestDevice({
-                filters: [
-                    { services: [0x180d] } // บอก Chrome ว่า "ช่วยหาอุปกรณ์ที่มี Service 180d ให้หน่อย"
-                ],
-                optionalServices: ['heart_rate'] // ยืนยันว่าเราจะขอคุยกับ Service นี้ (180d คือรหัสของ Heart Rate)
-            });
+            rssiVal.innerText = rssi;
+            distVal.innerText = distance + " m";
+            status.innerText = "รับข้อมูล Real-time สำเร็จ!";
+        });
 
-            status.innerText = "กำลังเริ่มดักฟังเรดาร์ (Watch Advertisements)...";
-            devName.innerText = device.name || "Unknown Device";
-
-            // 2. เริ่มดักฟังค่า RSSI แบบ Real-time
-            await device.watchAdvertisements();
-
-            // 3. จัดการข้อมูลเมื่อได้รับสัญญาณ (จะทำงานทุกครั้งที่อุปกรณ์ส่งสัญญาณใหม่)
-            device.addEventListener('advertisementreceived', (event) => {
-                const rssi = event.rssi;
-                const distance = calculateDistance(rssi);
-
-                status.innerText = "กำลังรับข้อมูลแบบ Real-time";
-                rssiVal.innerText = rssi;
-                distVal.innerText = distance;
-                
-                console.log(`Received RSSI: ${rssi} -> Distance: ${distance}m`);
-            });
-
-        } catch (error) {
-            status.innerText = "เกิดข้อผิดพลาด";
-            console.error(error);
-            alert("Error: " + error.message);
-        }
-    });
+    } catch (error) {
+        status.innerText = "ไม่เจออุปกรณ์ หรือยกเลิกการแสกน";
+        console.error("Error Detail:", error);
+    }
+});
 
     // ฟังก์ชันคำนวณระยะทาง
     function calculateDistance(rssi) {
