@@ -65,12 +65,22 @@
         await device.watchAdvertisements();
         
         device.addEventListener('advertisementreceived', (event) => {
-            const rssi = event.rssi;
-            const distance = calculateDistance(rssi);
+            // เก็บค่า RSSI ล่าสุดลงใน Array
+            rssiHistory.push(event.rssi);
             
-            rssiVal.innerText = rssi;
-            distVal.innerText = distance + " m";
-            status.innerText = "รับข้อมูล Real-time สำเร็จ!";
+            // เก็บแค่ 10 ค่าล่าสุดพอ (ถ้าเกินให้เอาค่าเก่าสุดออก)
+            if (rssiHistory.length > 10) rssiHistory.shift();
+            
+            // หาค่าเฉลี่ย RSSI เพื่อลดอาการ "เลขกระโดด"
+            const avgRssi = rssiHistory.reduce((a, b) => a + b) / rssiHistory.length;
+            
+            // คำนวณระยะทางจากค่าเฉลี่ย
+            const distance = calculateDistance(avgRssi);
+            
+            // แสดงผลบนหน้าจอ
+            rssiVal.innerText = avgRssi.toFixed(1); // โชว์ RSSI เฉลี่ย
+            distVal.innerText = distance + " m";   // โชว์ระยะทางที่นิ่งขึ้น
+            status.innerText = "กำลังคำนวณพิกัดแบบ Smooth...";
         });
 
     } catch (error) {
@@ -81,7 +91,7 @@
 
     // ฟังก์ชันคำนวณระยะทาง
     function calculateDistance(rssi) {
-        const txPower = -60; // ค่า RSSI มาตรฐานที่ระยะ 1 เมตร (ปรับได้ตามอุปกรณ์)
+        const txPower = -70; // ค่า RSSI มาตรฐานที่ระยะ 1 เมตร (ปรับได้ตามอุปกรณ์)
         const n = 2.5;       // ค่าคงที่สภาพแวดล้อม (อาคารปูน/ตึก)
         
         if (!rssi) return "-";
