@@ -41,6 +41,7 @@
     const rssiVal = document.getElementById('rssiVal');
     const distVal = document.getElementById('distVal');
     const flagWarning = document.getElementById('flagWarning');
+    let rssiHistory = [];
 
     // ตรวจสอบเบื้องต้นว่า Browser รองรับหรือไม่
     if (!('watchAdvertisements' in BluetoothDevice.prototype)) {
