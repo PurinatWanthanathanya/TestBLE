@@ -42,13 +42,27 @@
     const distVal = document.getElementById('distVal');
     const flagWarning = document.getElementById('flagWarning');
     let rssiHistory = [];
+    let lastUpdate = 0;
 
     // ตรวจสอบเบื้องต้นว่า Browser รองรับหรือไม่
     if (!('watchAdvertisements' in BluetoothDevice.prototype)) {
         flagWarning.style.display = 'block';
     }
 
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+        try {
+            // สั่งให้หน้าจอห้ามดับ
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Screen Wake Lock is active!');
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+        }
+    }
+
     scanBtn.addEventListener('click', async () => {
+        await requestWakeLock();
     try {
         status.innerText = "กำลังมองหาทุกอย่างรอบตัว...";
         
@@ -66,6 +80,7 @@
         await device.watchAdvertisements();
         
         device.addEventListener('advertisementreceived', (event) => {
+            const now = Date.now();
             // 1. ตรวจสอบก่อนว่ามีค่า RSSI ส่งมาจริงไหม
             if (event.rssi === undefined || event.rssi === null) return;
 
@@ -75,6 +90,7 @@
             // 3. เก็บแค่ 10 ค่าล่าสุด
             if (rssiHistory.length > 10) rssiHistory.shift();
             
+            if (now - lastUpdate > 500) {
             // 4. หาค่าเฉลี่ย (เพิ่มเลข 0 เข้าไปใน reduce เพื่อป้องกัน Error)
             const sum = rssiHistory.reduce((a, b) => a + b, 0); 
             const avgRssi = sum / rssiHistory.length;
@@ -88,6 +104,8 @@
             rssiVal.innerText = avgRssi.toFixed(1);
             distVal.innerText = distance + " m";
             status.innerText = "รับข้อมูล Real-time สำเร็จ! (ค่าเฉลี่ย 10 ครั้ง)";
+            lastUpdate = now;
+            }
         });
 
     } catch (error) {
