@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Bluetooth BLE Real-time Tester</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; text-align: center; background-color: #f4f7f6; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; min-width: 400px; }
+        button { background-color: #28a745; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        button:hover { background-color: #218838; }
+        #data-display { margin-top: 30px; text-align: left; background: #e9ecef; padding: 20px; border-radius: 10px; font-family: monospace; }
+        .metric { font-size: 24px; color: #007bff; font-weight: bold; }
+        .warning { color: #dc3545; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>BLE Real-time Scanner 📶</h1>
+    <p>ใช้สำหรับทดสอบการรับค่า RSSI และคำนวณระยะทาง</p>
+    
+    <button id="scanBtn">เริ่มสแกนอุปกรณ์</button>
+
+    <div id="data-display">
+        <div><strong>สถานะ:</strong> <span id="status">รอการสั่งงาน...</span></div>
+        <hr>
+        <div><strong>ชื่ออุปกรณ์:</strong> <span id="devName">-</span></div>
+        <div><strong>RSSI ล่าสุด:</strong> <span id="rssiVal" class="metric">-</span> dBm</div>
+        <div><strong>ระยะห่างโดยประมาณ:</strong> <span id="distVal" class="metric">-</span> เมตร</div>
+    </div>
+    
+    <div id="flagWarning" class="warning" style="display:none;">
+        ⚠️ กรุณาเปิด 'Experimental Web Platform features' ใน chrome://flags ก่อนใช้งาน
+    </div>
+</div>
+
+<script>
+    const scanBtn = document.getElementById('scanBtn');
+    const status = document.getElementById('status');
+    const devName = document.getElementById('devName');
+    const rssiVal = document.getElementById('rssiVal');
+    const distVal = document.getElementById('distVal');
+    const flagWarning = document.getElementById('flagWarning');
+
+    // ตรวจสอบเบื้องต้นว่า Browser รองรับหรือไม่
+    if (!('watchAdvertisements' in BluetoothDevice.prototype)) {
+        flagWarning.style.display = 'block';
+    }
+
+    scanBtn.addEventListener('click', async () => {
+        try {
+            status.innerText = "กำลังขอสิทธิ์เข้าถึง Bluetooth...";
+            
+            // 1. เลือกอุปกรณ์ (กรองเอาทุกอย่างที่ตะโกนสัญญาณออกมา)
+            const device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true
+            });
+
+            status.innerText = "กำลังเริ่มดักฟังเรดาร์ (Watch Advertisements)...";
+            devName.innerText = device.name || "Unknown Device";
+
+            // 2. เริ่มดักฟังค่า RSSI แบบ Real-time
+            await device.watchAdvertisements();
+
+            // 3. จัดการข้อมูลเมื่อได้รับสัญญาณ (จะทำงานทุกครั้งที่อุปกรณ์ส่งสัญญาณใหม่)
+            device.addEventListener('advertisementreceived', (event) => {
+                const rssi = event.rssi;
+                const distance = calculateDistance(rssi);
+
+                status.innerText = "กำลังรับข้อมูลแบบ Real-time";
+                rssiVal.innerText = rssi;
+                distVal.innerText = distance;
+                
+                console.log(`Received RSSI: ${rssi} -> Distance: ${distance}m`);
+            });
+
+        } catch (error) {
+            status.innerText = "เกิดข้อผิดพลาด";
+            console.error(error);
+            alert("Error: " + error.message);
+        }
+    });
+
+    // ฟังก์ชันคำนวณระยะทาง
+    function calculateDistance(rssi) {
+        const txPower = -60; // ค่า RSSI มาตรฐานที่ระยะ 1 เมตร (ปรับได้ตามอุปกรณ์)
+        const n = 2.5;       // ค่าคงที่สภาพแวดล้อม (อาคารปูน/ตึก)
+        
+        if (!rssi) return "-";
+        
+        // สูตร Physics: d = 10 ^ ((TxPower - RSSI) / (10 * n))
+        const d = Math.pow(10, (txPower - rssi) / (10 * n));
+        return d.toFixed(2);
+    }
+</script>
+
+</body>
+</html>
